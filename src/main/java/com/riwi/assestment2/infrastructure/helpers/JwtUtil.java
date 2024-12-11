@@ -21,33 +21,29 @@ public class JwtUtil {
     private Long jwtExpiration;
 
     private Key getSignInKey() {
-        return Keys.hmacShaKeyFor(secretKey.getBytes());
+        return Keys.hmacShaKeyFor(this.secretKey.getBytes());
     }
 
     public String generateToken(User user) {
         return Jwts.builder()
                 .addClaims(Map.of(
                         "id", user.getId(),
-                        "role", user.getRole().name()
+                        "role", user.getRole().name(),
+                        "name", user.getName()
                 ))
                 .setSubject(user.getUsername())
-                .setIssuedAt(new Date())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    public boolean validateToken(String token, String name) {
+        return (name.equals(extractUsername(token)) && !isTokenExpired(token));
     }
 
-    public boolean validateToken(String token, String username) {
-        try {
-            return username.equals(extractUsername(token)) && !isTokenExpired(token);
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("Error al validar el token: " + e.getMessage());
-            return false;
-        }
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
     private boolean isTokenExpired(String token) {
@@ -64,9 +60,5 @@ public class JwtUtil {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-    }
-
-    public String extractRole(String token) {
-        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 }
